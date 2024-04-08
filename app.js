@@ -41,7 +41,7 @@ class ProductManager {
   async addProduct({ title, description, price, thumbnail, code, stock }) {
     const existingProduct = this.products.find(product => product.code === code);
     if (existingProduct) {
-      throw new Error("El código de producto ya está en uso.");
+      throw  Error("El código de producto ya está en uso.");
     }
 
     const id = this.currentId++;
@@ -65,7 +65,7 @@ class ProductManager {
   async getProductById(id) {
     const product = this.products.find(product => product.id === id);
     if (!product) {
-      throw new Error("Producto no encontrado.");
+      throw  Error("Producto no encontrado.");
     }
     return product;
   }
@@ -73,7 +73,7 @@ class ProductManager {
   async updateProduct(id, updatedFields) {
     const productIndex = this.products.findIndex(product => product.id === id);
     if (productIndex === -1) {
-      throw new Error("Producto no encontrado.");
+      throw  Error("Producto no encontrado.");
     }
 
     this.products[productIndex] = {
@@ -90,7 +90,7 @@ class ProductManager {
     const initialLength = this.products.length;
     this.products = this.products.filter(product => product.id !== id);
     if (this.products.length === initialLength) {
-      throw new Error("Producto no encontrado.");
+      throw  Error("Producto no encontrado.");
     }
 
     await this.saveProducts(this.products);
