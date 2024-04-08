@@ -1,18 +1,44 @@
+const fs = require('fs').promises;
+const path = require('path');
+
 class ProductManager {
-  constructor() {
+  constructor(filename) {
+    this.filename = filename;
     this.products = [];
-    this.currentId = 1; 
+    this.currentId = 1;
   }
 
-  getProducts() {
+  async init() {
+    try {
+      await fs.access(this.filename);
+      await this.loadProducts();
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        await this.saveProducts([]); 
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  async loadProducts() {
+    const data = await fs.readFile(this.filename, 'utf8');
+    this.products = JSON.parse(data);
+    const lastProduct = this.products[this.products.length - 1];
+    if (lastProduct) {
+      this.currentId = lastProduct.id + 1;
+    }
+  }
+
+  async saveProducts(products) {
+    await fs.writeFile(this.filename, JSON.stringify(products, null, 2));
+  }
+
+  async getProducts() {
     return this.products;
   }
 
-  addProduct({ title, description, price, thumbnail, code, stock }) {
-    if (!title || !description || !price || !thumbnail || !code || !stock) {
-      throw new Error("Todos los campos son obligatorios.");
-    }
-
+  async addProduct({ title, description, price, thumbnail, code, stock }) {
     const existingProduct = this.products.find(product => product.code === code);
     if (existingProduct) {
       throw new Error("El código de producto ya está en uso.");
@@ -31,11 +57,12 @@ class ProductManager {
     };
 
     this.products.push(newProduct);
+    await this.saveProducts(this.products);
 
     return newProduct;
   }
 
-  getProductById(id) {
+  async getProductById(id) {
     const product = this.products.find(product => product.id === id);
     if (!product) {
       throw new Error("Producto no encontrado.");
@@ -43,7 +70,7 @@ class ProductManager {
     return product;
   }
 
-  updateProduct(id, updatedFields) {
+  async updateProduct(id, updatedFields) {
     const productIndex = this.products.findIndex(product => product.id === id);
     if (productIndex === -1) {
       throw new Error("Producto no encontrado.");
@@ -54,67 +81,64 @@ class ProductManager {
       ...updatedFields
     };
 
+    await this.saveProducts(this.products);
+
     return this.products[productIndex];
   }
 
-  deleteProduct(id) {
+  async deleteProduct(id) {
     const initialLength = this.products.length;
     this.products = this.products.filter(product => product.id !== id);
     if (this.products.length === initialLength) {
       throw new Error("Producto no encontrado.");
     }
+
+    await this.saveProducts(this.products);
   }
 }
 
-const productManager = new ProductManager();
+const dataDirectory = 'data';
+const productsFile = path.join(dataDirectory, 'products.json');
 
-try {
-  const newProduct = productManager.addProduct({
-    title: "producto prueba",
-    description: "Este es un producto prueba",
-    price: 200,
-    thumbnail: "Sin imagen",
-    code: "abc123",
-    stock: 25
-  });
-  console.log("Producto agregado:", newProduct);
-} catch (error) {
-  console.error("Error al agregar producto:", error.message);
-}
+(async () => {
+  try {
+    try {
+      await fs.access(dataDirectory);
+    } catch (error) {
+      await fs.mkdir(dataDirectory);
+    }
 
-console.log("Todos los productos:", productManager.getProducts());
+    const productManager = new ProductManager(productsFile);
+    await productManager.init();
 
-try {
-  productManager.addProduct({
-    title: "producto prueba",
-    description: "Este es un producto prueba",
-    price: 200,
-    thumbnail: "Sin imagen",
-    code: "abc123",
-    stock: 25
-  });
-} catch (error) {
-  console.error("Error al agregar producto:", error.message);
-}
+    console.log("Se crea una instancia de ProductManager");
 
-try {
-  const foundProduct = productManager.getProductById(1);
-  console.log("Producto encontrado por ID:", foundProduct);
-} catch (error) {
-  console.error("Error al buscar producto por ID:", error.message);
-}
+    const emptyProducts = await productManager.getProducts();
+    console.log("getProducts recién creada la instancia:", emptyProducts);
 
-try {
-  const updatedProduct = productManager.updateProduct(1, { price: 250 });
-  console.log("Producto actualizado:", updatedProduct);
-} catch (error) {
-  console.error("Error al actualizar producto:", error.message);
-}
+    const newProduct = await productManager.addProduct({
+      title: "producto prueba",
+      description: "Este es un producto prueba",
+      price: 200,
+      thumbnail: "Sin imagen",
+      code: "abc123",
+      stock: 25
+    });
+    console.log("Producto agregado:", newProduct);
 
-try {
-  productManager.deleteProduct(1);
-  console.log("Producto eliminado con éxito.");
-} catch (error) {
-  console.error("Error al eliminar producto:", error.message);
-}
+    const updatedProducts = await productManager.getProducts();
+    console.log("getProducts después de agregar producto:", updatedProducts);
 
+    const foundProduct = await productManager.getProductById(newProduct.id);
+    console.log("Producto encontrado por ID:", foundProduct);
+
+    const updatedProduct = await productManager.updateProduct(newProduct.id, { price: 250 });
+    console.log("Producto actualizado:", updatedProduct);
+
+    await productManager.deleteProduct(newProduct.id);
+    console.log("Producto eliminado con éxito.");
+
+  } catch (error) {
+    console.error("Error:", error);
+  }
+})();
