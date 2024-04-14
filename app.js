@@ -14,7 +14,7 @@ class ProductManager {
       await this.loadProducts();
     } catch (error) {
       if (error.code === 'ENOENT') {
-        await this.saveProducts([]); 
+        await this.saveProducts([]);
       } else {
         throw error;
       }
@@ -39,9 +39,14 @@ class ProductManager {
   }
 
   async addProduct({ title, description, price, thumbnail, code, stock }) {
+
+    if (!title || !description || !price || !thumbnail || !code || !stock) {
+      throw new Error("Todos los campos son obligatorios.");
+    }
+
     const existingProduct = this.products.find(product => product.code === code);
     if (existingProduct) {
-      throw  Error("El código de producto ya está en uso.");
+      throw Error("El código de producto ya está en uso.");
     }
 
     const id = this.currentId++;
@@ -65,7 +70,7 @@ class ProductManager {
   async getProductById(id) {
     const product = this.products.find(product => product.id === id);
     if (!product) {
-      throw  Error("Producto no encontrado.");
+      throw Error("Producto no encontrado.");
     }
     return product;
   }
@@ -73,7 +78,20 @@ class ProductManager {
   async updateProduct(id, updatedFields) {
     const productIndex = this.products.findIndex(product => product.id === id);
     if (productIndex === -1) {
-      throw  Error("Producto no encontrado.");
+      throw Error("Producto no encontrado.");
+    }
+
+
+    if (updatedFields.id && updatedFields.id !== id) {
+      throw new Error("No puedes cambiar el ID del producto.");
+    }
+
+
+    if (updatedFields.code) {
+      const existingProductWithCode = this.products.find(product => product.code === updatedFields.code && product.id !== id);
+      if (existingProductWithCode) {
+        throw new Error("El código de producto ya está en uso.");
+      }
     }
 
     this.products[productIndex] = {
@@ -90,7 +108,7 @@ class ProductManager {
     const initialLength = this.products.length;
     this.products = this.products.filter(product => product.id !== id);
     if (this.products.length === initialLength) {
-      throw  Error("Producto no encontrado.");
+      throw Error("Producto no encontrado.");
     }
 
     await this.saveProducts(this.products);
