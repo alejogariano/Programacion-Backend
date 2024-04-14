@@ -80,16 +80,9 @@ class ProductManager {
     if (productIndex === -1) {
       throw Error("Producto no encontrado.");
     }
-
-
-    if (updatedFields.id && updatedFields.id !== id) {
-      throw new Error("No puedes cambiar el ID del producto.");
-    }
-
-
     if (updatedFields.code) {
-      const existingProductWithCode = this.products.find(product => product.code === updatedFields.code && product.id !== id);
-      if (existingProductWithCode) {
+      const existingProduct = this.products.find(product => product.code === updatedFields.code && product.id !== id);
+      if (existingProduct) {
         throw new Error("El código de producto ya está en uso.");
       }
     }
